@@ -9,7 +9,13 @@ int remove_user_session(vector *session_users,int fd){
        }
     }
     if(idx == -1)return idx;
-    swap(session_users->arr[idx],session_users->arr[session_users->sz-1]);
+
+    size_t ws = sizeof(struct user);
+    struct user tmp;
+    memcpy(&tmp, session_users->arr + idx * ws, ws);
+    memcpy(session_users->arr + idx * ws,
+        session_users->arr + (session_users->sz - 1) * ws, ws);
+    memcpy(session_users->arr + (session_users->sz - 1) * ws, &tmp, ws);
     pop_back(session_users);
     return 1;
 }

@@ -4,11 +4,16 @@
 #include "session.h"
 #include<pthread.h>
 #include<ncurses.h>
-
+#include<time.h>
 int serverSocketFD;
 struct sockaddr_in serverAdress;
 vector session_users = {0,0,NULL,sizeof(struct user)};
-
+void get_time(char buf[]){
+    time_t t = time(NULL);
+    struct tm *tm_struc;
+    tm_struc = localtime(&t);
+    strftime(buf,9,"%I:%M %p",tm_struc);
+}
 void create_server(){
     // create a socket on an ip and port
     serverSocketFD = socket(AF_INET,SOCK_STREAM,0);
@@ -50,7 +55,9 @@ void broadcast(int clientFd,char* msg){
         struct user *cur = (struct user*)get(&session_users,i);
         // if(cur->fd == clienFd)continue;
         char buf[BUFSIZ*2];
-        sprintf(buf,"%s %s\n",sender_name,msg);
+        char tm[9];
+        get_time(tm);
+        sprintf(buf,"%s <%s> : %s\n",sender_name,tm,msg);
         send_msg(cur->fd,buf);
     }
 }
@@ -127,7 +134,7 @@ int log_user(int clientSocketFD){
 
 }
 void* chat(void* clientFd){
-    if(log_user(*(int*)clientFd) == ERR)return;
+    if(log_user(*(int*)clientFd) == ERR)return NULL;
     char buf[BUFSIZ];
     broadcast_connected_users();
     while(1){
@@ -140,6 +147,7 @@ void* chat(void* clientFd){
         buf[n] = '\0';
         broadcast(*(int*)clientFd,buf);
     }
+    free(clientFd);
     return NULL;
 }
 void process_connection(){
@@ -178,6 +186,7 @@ void run_server(){
     create_server();
     pthread_t thread;
     pthread_create(&thread,NULL,tst,NULL);
+    pthread_detach(&thread);
     while (1)
     {
        process_connection();
@@ -207,6 +216,7 @@ int main(){
     //     }
     //     send(clientSocketFD,line,len,0);
     // }
+    free_vector(&session_users);
     close(clientSocketFD);
     shutdown(serverSocketFD,SHUT_RDWR);
     return 0;

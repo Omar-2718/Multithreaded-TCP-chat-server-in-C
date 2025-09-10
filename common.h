@@ -9,7 +9,7 @@
 #include<malloc.h>
 #include<ncurses.h>
 
-#define PORT 3098
+#define PORT 3103
 #define BUFSZ 1024
 #define BACKLOG 10
 #define DBSZ 10
