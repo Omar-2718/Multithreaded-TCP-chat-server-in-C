@@ -40,40 +40,48 @@ void create_server(){
     }
     
 }
-void broadcast(char* msg,int clientFd){
+// bytes user msg
+// bytes user name
+
+
+void broadcast(int clientFd,char* msg){
     char* sender_name =  get_user_name_from_fd(&session_users,clientFd);
     for(int i=0;i<session_users.sz;i++){
         struct user *cur = (struct user*)get(&session_users,i);
         // if(cur->fd == clienFd)continue;
         char buf[BUFSIZ*2];
-        sprintf(buf,"%s %s\n",sender_name,msg);;
-        send(cur->fd,buf,strlen(buf),0);
+        sprintf(buf,"%s %s\n",sender_name,msg);
+        send_msg(cur->fd,buf);
     }
 }
 
 void broadcast_connected_users(){    
-    
+    char buf[BUFSIZ*2] = {"user \0"};
     for(int i=0;i<session_users.sz;i++){
         struct user *cur = (struct user*)get(&session_users,i);
-        for(int j=0;j<session_users.sz;j++){
-            struct user *cur_j = (struct user*)get(&session_users,j);
-            char buf[BUFSIZ];
-            sprintf(buf,"user %s\n",cur->username);
-            send(cur_j->fd,buf,strlen(buf),0);
+        strcat(buf,cur->username);
+        if(i+1 == session_users.sz){
+            strcat(buf,"\n");
         }
+        else 
+            strcat(buf," ");
     }   
+    for(int i=0;i<session_users.sz;i++){
+        struct user *cur = (struct user*)get(&session_users,i);
+        send_msg(cur->fd,buf);
+    }
 }
 // LOGIN USERNAME PASSWORD
 // SIGNUP USERNAME PASSWORD
 void close_connection(int clientSocketFD,char* msg){
-    send(clientSocketFD,msg,strlen(msg),0);
+    send_msg(clientSocketFD,msg);
     close(clientSocketFD);
 }
 int clientSocketFD;
 int log_user(int clientSocketFD){
 
     char buf[BUFSIZ];
-    int n = recv(clientSocketFD,buf,BUFSIZ-1,0);
+    int n = recv_msg(clientSocketFD,buf,BUFSIZ-1);
     if(n <= 0){
         close_connection(clientSocketFD,"Wrong format1\n");
         return ERR;
@@ -89,6 +97,10 @@ int log_user(int clientSocketFD){
             close_connection(clientSocketFD,"User name not found or wrong password\n");
             return ERR;
         }
+        if(strcmp(name,"user") == 0){
+            close_connection(clientSocketFD,"user name cant be user\n");
+            return ERR;
+        }
         add_user_session(&session_users,create_user(name,pass,clientSocketFD));
         return clientSocketFD;
     }
@@ -101,6 +113,10 @@ int log_user(int clientSocketFD){
             close_connection(clientSocketFD,"Sorry maximum number of users logged\n");
             return ERR;
 
+        }
+        if(strcmp(name,"user") == 0){
+            close_connection(clientSocketFD,"user name cant be user\n");
+            return ERR;
         }
         add_user_session(&session_users,create_user(name,pass,clientSocketFD));
 
@@ -115,14 +131,14 @@ void* chat(void* clientFd){
     char buf[BUFSIZ];
     broadcast_connected_users();
     while(1){
-        int n = recv(*(int*)clientFd,buf,BUFSIZ-1,0);
+        int n = recv_msg(*(int*)clientFd,buf,BUFSIZ-1);
         if(n <= 0){
             remove_user_session(&session_users,*(int*)clientFd);
             broadcast_connected_users();
             break;
         }
         buf[n] = '\0';
-        broadcast(buf,*(int*)clientFd);
+        broadcast(*(int*)clientFd,buf);
     }
     return NULL;
 }

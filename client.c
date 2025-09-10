@@ -37,16 +37,29 @@ void write_main_chat(char buf[]){
 
 }
 void update_current_users(char* name){
-
+    char* token = strtok(name," ");
+    int cur_i,cur_j;
+    box(users,0,0);
+    wmove(users,1,1);
+    while (token)
+    {
+        getyx(users,cur_i,cur_j);
+        wmove(users,cur_i,1);
+        wprintw(users,"%s\n",token);
+        wrefresh(users);
+        // continue from last left \0 untill next space
+        token = strtok(NULL," ");
+    }
+    // wprintw(users,)
 }
 void clear_current_users(){
-
+    wclear(users);
 }
 void *incoming_msg(void *arg) {
     char buf[BUFSIZ];
     memset(buf,0,sizeof buf);
     while (1) {
-        int res = recv(socketFD, buf, BUFSIZ - 1, 0);
+        int res = recv_msg(socketFD, buf, BUFSIZ - 1);
         if (res <= 0) {
             if(buf[0] != 0){
                 err_exit_wn(buf);
@@ -55,10 +68,12 @@ void *incoming_msg(void *arg) {
         }
         buf[res] = '\0';
         char name[16];
-        char msg[BUFSIZ];
-        if(sscanf(buf,"%15s %s",name,msg) != 2){
+        if(sscanf(buf,"%15s",name) >= 1){
             if(strcmp("user",name) == 0){
-                update_current_users(name);
+                clear_current_users();
+                char* msgp = malloc(sizeof(char) * res);
+                memcpy(msgp,buf + 5*sizeof(char),res-5);
+                update_current_users(msgp);
             }
         }
         write_main_chat(buf);
@@ -132,7 +147,7 @@ void run_chat(){
             break;
         }
 
-        if (send(socketFD, buf, strlen(buf), 0) <= 0) {
+        if (send_msg(socketFD, buf) <= 0) {
             close(socketFD);
             err_exit_wn("error sending data");
             break;
