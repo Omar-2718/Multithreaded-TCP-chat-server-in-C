@@ -6,6 +6,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <locale.h>
+
 WINDOW* users,*main_chat,*user_chat;
 void err_exit_wn(char* msg){
 
@@ -75,35 +77,36 @@ void *incoming_msg(void *arg) {
                 memcpy(msgp,buf + 5*sizeof(char),res-5);
                 update_current_users(msgp);
             }
+            else{
+                write_main_chat(buf);
+            }
         }
-        write_main_chat(buf);
         
     }
     return NULL;
 }
 int connect_server(){
     socketFD = socket(AF_INET, SOCK_STREAM, 0);
-    if (socketFD == -1) err_exit("couldnt connect socket");
+    if (socketFD == -1) err_exit_wn("couldnt connect socket");
 
     struct sockaddr_in address;
     address.sin_family = AF_INET;
     address.sin_port = htons(PORT);
 
     char *ip = "127.0.0.1";
-    if (inet_pton(AF_INET, ip, &address.sin_addr) <= 0) err_exit("inet_pton");
+    if (inet_pton(AF_INET, ip, &address.sin_addr) <= 0) err_exit_wn("inet_pton");
 
     int res = connect(socketFD,&address,sizeof(address));
     if(res == 0){
         printf("connection successful\n");
     }else{
-        printf("couldnt connect error %d\n",res);
-        return -1;
+        err_exit_wn("couldnt connect error\n");
     }
 
     pthread_t thread;
     
     if (pthread_create(&thread, NULL, incoming_msg, NULL) != 0) {
-        err_exit("couldnt create thread");
+        err_exit_wn("couldnt create thread");
     }
     pthread_detach(thread);
 

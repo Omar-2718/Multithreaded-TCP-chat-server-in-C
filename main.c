@@ -8,6 +8,9 @@
 int serverSocketFD;
 struct sockaddr_in serverAdress;
 vector session_users = {0,0,NULL,sizeof(struct user)};
+vector all_fd = {0,0,NULL,sizeof(int)};
+vector threads = {0,0,NULL,sizeof(pthread_t)};
+int running = 1;
 void get_time(char buf[]){
     time_t t = time(NULL);
     struct tm *tm_struc;
@@ -84,7 +87,6 @@ void close_connection(int clientSocketFD,char* msg){
     send_msg(clientSocketFD,msg);
     close(clientSocketFD);
 }
-int clientSocketFD;
 int log_user(int clientSocketFD){
 
     char buf[BUFSIZ];
@@ -135,6 +137,7 @@ int log_user(int clientSocketFD){
 }
 void* chat(void* clientFd){
     if(log_user(*(int*)clientFd) == ERR)return NULL;
+    
     char buf[BUFSIZ];
     broadcast_connected_users();
     while(1){
@@ -142,7 +145,7 @@ void* chat(void* clientFd){
         if(n <= 0){
             remove_user_session(&session_users,*(int*)clientFd);
             broadcast_connected_users();
-            break;
+            return NULL;
         }
         buf[n] = '\0';
         broadcast(*(int*)clientFd,buf);
@@ -153,15 +156,18 @@ void* chat(void* clientFd){
 void process_connection(){
     struct sockaddr_in clientAdress;
     int clientAdressSize = sizeof(struct sockaddr_in);
-    clientSocketFD = accept(serverSocketFD,&clientAdress,&clientAdressSize);
+    int clientSocketFD = accept(serverSocketFD,(struct sockaddr*)&clientAdress,&clientAdressSize);
     if(clientSocketFD < 0){
         // fix later
-        err_exit("Error connecting the client socket\n");
+        // err_exit("Error connecting the client socket\n");
+        return;
     }
     
-    pthread_t thread;
+    pthread_t thread;    
     int *fd = malloc(sizeof(int));
     *fd = clientSocketFD;
+    push_back(&all_fd,fd);
+    push_back(&threads,&thread);
     pthread_create(&thread,NULL,chat,fd);
 
 }
@@ -172,52 +178,59 @@ void show_connected_users(){
     ((struct user*)get(&session_users,i))->password);
     }
 }
+void exit_program(){
+    printf("Exiting\n");
+    fflush(stdout);
+    // for(int i=0;i<all_fd.sz;i++){
+    //     close(*(int*)get(&all_fd,i));
+    // }
+    for(int i=0;i<threads.sz;i++){
+        pthread_t thread = *(pthread_t*)get(&threads,i);
+        pthread_join(thread,NULL);
+    }
+
+    free_vector(&threads);
+    free_vector(&session_users);
+    free_vector(&all_fd);
+}
 void* tst(void*){
     while (1)
-    {
-        if(getchar()){
-            printf("printing\n");
+    {   
+        printf("Enter q to quit or any character to show connected users\n");
+        int c = getchar();
+        if(c == 'q'){
+            running = 0;
+            return NULL;
+        }
+        if(c){
+            printf("Printing connected users\n");
             show_connected_users();
         }
+        
     }
     return NULL;
 }
-void run_server(){
+void* run_server(){
     create_server();
     pthread_t thread;
+    push_back(&threads,&thread);
     pthread_create(&thread,NULL,tst,NULL);
-    pthread_detach(&thread);
-    while (1)
+    while (running)
     {
        process_connection();
     }
-    
+    return NULL;    
 }
 int main(){
-    // blocking call that will return fd for the connected socket
-    run_server();
-    // while (1)
-    // {
-    //     char buf[1024];
-    //     recv(clientSocketFD,buf,1024,0);
-    //     printf("User 2: %s\n",buf);
-
-    //     char* line = NULL;
-    //     size_t len =0;
-    //     printf("You : ");
-    //     int nread = getline(&line,&len,stdin);
-    //     if(nread < 0){
-    //         printf("error reading messege\n");
-    //         return -1;
-    //     }
-    //     if(strcmp(line,"exit\n") == 0){
-    //         printf("Exiting..\n");
-    //         return -1;
-    //     }
-    //     send(clientSocketFD,line,len,0);
-    // }
-    free_vector(&session_users);
-    close(clientSocketFD);
+    pthread_t serv_thread;
+    pthread_create(&serv_thread,NULL,run_server,NULL);
+    while (running)
+    {
+        // printf("%d",running);
+        sleep(1);
+    }
     shutdown(serverSocketFD,SHUT_RDWR);
+    pthread_join(serv_thread,NULL);
+    exit_program();
     return 0;
 }

@@ -26,7 +26,15 @@ void push_back(vector* v,void* val){
 void pop_back(vector* v){
     v->sz--;
 }
+void free_elements(vector*v){
+    for(int i=0;i<v->sz;i++){
+        void* ptr = (void**)(v->arr + (v->word_sz * i));
+        free(ptr);
+    }
+    free_vector(v);
+}
 void free_vector(vector* v){
+    if(v->arr == NULL)return;
     free(v->arr);
     v->sz = 0;
     v->cap = 0;
