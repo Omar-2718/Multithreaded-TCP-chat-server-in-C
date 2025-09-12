@@ -1,15 +1,7 @@
 #include "common.h"
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <locale.h>
+
 char ip[BUFSIZ];
-int socketFD;
-int n,m;
+int socketFD = -1;
 void get_ip(char buf[]){
     struct in_addr tmp;
     printf("Enter ip adress or local for local ip : ");
@@ -20,22 +12,30 @@ void get_ip(char buf[]){
         strcpy(buf,"127.0.0.1");
         return;
     }
-    if (inet_pton(AF_INET, buf, &tmp) <= 0) err_exit("invalid ip adress");
+    if (inet_pton(AF_INET, buf, &tmp) <= 0) err_exit("Invalid ip adress");
 }
+WINDOW* users_border,*main_chat_border,*user_chat_border;
 WINDOW* users,*main_chat,*user_chat;
 void err_exit_wn(char* msg){
-
     delwin(users);
     delwin(main_chat);
     delwin(user_chat);
+    delwin(users_border);
+    delwin(main_chat_border);
+    delwin(user_chat_border);
     endwin();
     printf("%s\n",msg);
+    if(socketFD != -1)
+    close(socketFD);
     exit(EXIT_FAILURE);
 }
 void exit_program(char* msg){
     delwin(users);
     delwin(main_chat);
     delwin(user_chat);
+    delwin(users_border);
+    delwin(main_chat_border);
+    delwin(user_chat_border);
     endwin();
     close(socketFD);
     if(msg != NULL){
@@ -49,34 +49,37 @@ void write_main_chat(char buf[]){
     {   
         int cur_i,cur_j;
         getyx(main_chat,cur_i,cur_j);
-        if(cur_i + 1 >= getmaxy(main_chat)){
+        if(cur_i >= getmaxy(main_chat)){
             wscrl(main_chat,1);
         }
-        wmove(main_chat,cur_i,1);
         wprintw(main_chat,"%s\n", line);
         wrefresh(main_chat);
         line = strtok(NULL,"\n");
     }
-
 }
 void update_current_users(char* name){
     char* token = strtok(name," ");
     int cur_i,cur_j;
-    box(users,0,0);
-    wmove(users,1,1);
+    wprintw(users,"Active Users : \n");
     while (token)
     {
         getyx(users,cur_i,cur_j);
-        wmove(users,cur_i,1);
+        wattron(users,COLOR_PAIR(1));
         wprintw(users,"%s\n",token);
-        wrefresh(users);
+        wattroff(users,COLOR_PAIR(1));
         // continue from last left \0 untill next space
         token = strtok(NULL," ");
     }
+    wrefresh(users);
     // wprintw(users,)
 }
 void clear_current_users(){
     wclear(users);
+    wrefresh(users);
+}
+void clear_main_chat(){
+    wclear(main_chat);
+    wrefresh(main_chat);
 }
 void *incoming_msg(void *arg) {
     char buf[BUFSIZ];
@@ -108,7 +111,7 @@ void *incoming_msg(void *arg) {
 }
 int connect_server(){
     socketFD = socket(AF_INET, SOCK_STREAM, 0);
-    if (socketFD == -1) err_exit_wn("couldnt connect socket");
+    if (socketFD == -1) err_exit_wn("Couldnt connect socket");
 
     struct sockaddr_in address;
     address.sin_family = AF_INET;
@@ -118,40 +121,62 @@ int connect_server(){
 
     int res = connect(socketFD,&address,sizeof(address));
     if(res == 0){
-        printf("connection successful\n");
+        printf("Connection successful\n");
     }else{
-        err_exit_wn("couldnt establish connection\n");
+        err_exit_wn("Couldnt establish connection\n");
     }
 
     pthread_t thread;
     
     if (pthread_create(&thread, NULL, incoming_msg, NULL) != 0) {
-        err_exit_wn("couldnt create thread");
+        err_exit_wn("Couldnt create thread");
     }
     pthread_detach(thread);
 
 }
 void chat_screen(){
-    getmaxyx(stdscr,n,m);
-    users = newwin(n,m*0.2,0,0);
-    main_chat = newwin(n*0.8,m*0.8,0,0.2*m);
-    user_chat = newwin(n*0.2,m*0.8,n*0.8,m*0.2);
-    wmove(users,1,1);
-    wmove(main_chat,1,1);
-    wmove(user_chat,1,1);
-    box(users,0,0);
-    box(main_chat,0,0);
-    box(user_chat,0,0);
+    int rows,columns;
+    getmaxyx(stdscr,rows,columns);
+    users_border = newwin(rows,columns*0.2,0,0);
+    main_chat_border = newwin(rows*0.8,columns*0.8,0,0.2*columns);
+    user_chat_border = newwin(rows*0.2,columns*0.8,rows*0.8,columns*0.2);
+
+    users = derwin(users_border,rows-2,(columns*0.2)-2,1,1);
+    main_chat = derwin(main_chat_border,(rows*0.8)-2,(columns*0.8)-2,1,1);
+    user_chat = derwin(user_chat_border,(rows*0.2)-2,(columns*0.8)-2,1,1);
+    
+    box(users_border,0,0);
+    box(main_chat_border,0,0);
+    box(user_chat_border,0,0);
+    wrefresh(users_border);
+    wrefresh(main_chat_border);
+    wrefresh(user_chat_border);
+
     scrollok(main_chat, TRUE);
 
-    init_pair(1,COLOR_WHITE,COLOR_RED);
+    init_pair(1,COLOR_GREEN,COLOR_BLACK);
+    init_pair(2,COLOR_RED,COLOR_BLACK);
+
     wattron(users,COLOR_PAIR(1));
-    mvwprintw(users,1,1,"Active users %d %d\n",n,m);
+    wprintw(users,"Active users window\n");
     wattroff(users,COLOR_PAIR(1));
+
+    wattron(main_chat,COLOR_PAIR(2));
+    wprintw(main_chat,"Type clear() to clear chat\nType exit() to exit program\n\n");
+    wattroff(main_chat,COLOR_PAIR(2));
+
+    wattron(main_chat,COLOR_PAIR(1));
+    wprintw(main_chat,"To login type \"login <username> <password>\"\n");
+    wattroff(main_chat,COLOR_PAIR(1));
+
+    wattron(main_chat,COLOR_PAIR(1));
+    wprintw(main_chat,"To signup type \"signup <username> <password>\"\n");
+    wattroff(main_chat,COLOR_PAIR(1));
 
     wrefresh(users);
     wrefresh(main_chat);
     wrefresh(user_chat);
+
 }
 void run_chat(){
     chat_screen();
@@ -159,30 +184,34 @@ void run_chat(){
         char buf[BUFSIZ];
         int res = wgetnstr(user_chat,buf,BUFSIZ);
         wclear(user_chat);
-        wmove(user_chat,1,1);
         wprintw(user_chat,"You : ");
-        box(user_chat,0,0);
         wrefresh(user_chat);
+        if (strcmp(buf, "") == 0) {
+            continue;
+        }
         if (strcmp(buf, "exit()") == 0) {
             wprintw(user_chat,"Exiting..\n");
             wrefresh(user_chat);
             exit_program("Exit Succesful\n");
             break;
         }
+        if (strcmp(buf, "clear()") == 0) {
+            clear_main_chat();
+            continue;
+        }
 
         if (send_msg(socketFD, buf) <= 0) {
-            close(socketFD);
-            err_exit_wn("error sending data");
+            err_exit_wn("Error sending data");
             break;
         }
     }
-    close(socketFD);
 }
 
 int main() {
     get_ip(ip);
     get_port();
     initscr();
+    
     start_color();
     connect_server();
     run_chat();

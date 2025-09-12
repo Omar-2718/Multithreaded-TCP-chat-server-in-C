@@ -2,9 +2,7 @@
 #include"user.h"
 #include"database.h"
 #include "session.h"
-#include<pthread.h>
-#include<ncurses.h>
-#include<time.h>
+
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 int serverSocketFD;
 struct sockaddr_in serverAdress;
@@ -243,6 +241,7 @@ void run_server(){
 }
 
 int main(){
+    signal(SIGPIPE, SIG_IGN);
     get_port();
     run_server();
     exit_program();

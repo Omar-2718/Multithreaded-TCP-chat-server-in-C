@@ -8,7 +8,11 @@
 #include<string.h>
 #include<malloc.h>
 #include<ncurses.h>
-
+#include<pthread.h>
+#include<time.h>
+#include<signal.h>
+#include <unistd.h>
+#include <locale.h>
 #define BUFSZ 1024
 #define BACKLOG 10
 #define DBSZ 10
@@ -52,11 +56,11 @@ int send_msg(int fd,char* msg){
     uint32_t len = strlen(msg);
     uint32_t nt_len = htonl(len);
     if(send_entire_len(fd,&nt_len,sizeof(nt_len)) != sizeof(nt_len)){
-        printf("Error sending msg to %d FD",fd);
+        printf("Couldnt send to %d FD (most likely the client disconnected)\n",fd);
         return -1;
     }
     if(send_entire_len(fd,msg,len) != len){
-        printf("Error sending msg to %d FD",fd);
+        printf("Couldnt send to %d FD (most likely the client disconnected)\n",fd);
         return -1;
     }
     return len;
