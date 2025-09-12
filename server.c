@@ -184,9 +184,8 @@ void process_connection(){
 }
 void show_connected_users(){
     for(int i=0;i<session_users.sz;i++){
-        printf("UserName : %s | fileDS : %d | pass : %s\n",((struct user*)get(&session_users,i))->username,
-    ((struct user*)get(&session_users,i))->fd,
-    ((struct user*)get(&session_users,i))->password);
+        printf("UserName : %s | fileDS : %d\n",((struct user*)get(&session_users,i))->username,
+    ((struct user*)get(&session_users,i))->fd);
     }
 }
 void exit_program(){
