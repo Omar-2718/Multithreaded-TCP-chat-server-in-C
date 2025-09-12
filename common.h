@@ -9,7 +9,6 @@
 #include<malloc.h>
 #include<ncurses.h>
 
-#define PORT 3121
 #define BUFSZ 1024
 #define BACKLOG 10
 #define DBSZ 10
@@ -19,6 +18,13 @@
 #define USERNOTFND 0
 #define VECTORRES 4
 #define ERR -1
+int PORT;
+void get_port(){
+    printf("Enter port : ");
+    if(scanf("%d",&PORT) != 1){
+        err_exit("Invalid port\n");
+    }
+}
 
 #define swap(x,y) \
  do{                   \

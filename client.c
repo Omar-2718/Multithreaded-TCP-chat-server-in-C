@@ -7,21 +7,42 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <locale.h>
-
+char ip[BUFSIZ];
+int socketFD;
+int n,m;
+void get_ip(char buf[]){
+    struct in_addr tmp;
+    printf("Enter ip adress or local for local ip : ");
+    if(scanf("%s",buf) != 1){
+        err_exit("invalid ip adress\n");
+    }
+    if(strcmp(buf,"local") == 0){
+        strcpy(buf,"127.0.0.1");
+        return;
+    }
+    if (inet_pton(AF_INET, buf, &tmp) <= 0) err_exit("invalid ip adress");
+}
 WINDOW* users,*main_chat,*user_chat;
 void err_exit_wn(char* msg){
 
     delwin(users);
     delwin(main_chat);
     delwin(user_chat);
-
     endwin();
     printf("%s\n",msg);
     exit(EXIT_FAILURE);
 }
-
-int socketFD;
-int n,m;
+void exit_program(char* msg){
+    delwin(users);
+    delwin(main_chat);
+    delwin(user_chat);
+    endwin();
+    close(socketFD);
+    if(msg != NULL){
+        printf("%s",msg);
+    }
+    exit(EXIT_SUCCESS);
+}
 void write_main_chat(char buf[]){
     char *line = strtok(buf,"\n");
     while (line)
@@ -93,14 +114,13 @@ int connect_server(){
     address.sin_family = AF_INET;
     address.sin_port = htons(PORT);
 
-    char *ip = "127.0.0.1";
-    if (inet_pton(AF_INET, ip, &address.sin_addr) <= 0) err_exit_wn("inet_pton");
+    if (inet_pton(AF_INET, ip, &address.sin_addr) <= 0) err_exit_wn("not a valid ip adress");
 
     int res = connect(socketFD,&address,sizeof(address));
     if(res == 0){
         printf("connection successful\n");
     }else{
-        err_exit_wn("couldnt connect error\n");
+        err_exit_wn("couldnt establish connection\n");
     }
 
     pthread_t thread;
@@ -146,7 +166,7 @@ void run_chat(){
         if (strcmp(buf, "exit()") == 0) {
             wprintw(user_chat,"Exiting..\n");
             wrefresh(user_chat);
-            close(socketFD);
+            exit_program("Exit Succesful\n");
             break;
         }
 
@@ -160,6 +180,8 @@ void run_chat(){
 }
 
 int main() {
+    get_ip(ip);
+    get_port();
     initscr();
     start_color();
     connect_server();

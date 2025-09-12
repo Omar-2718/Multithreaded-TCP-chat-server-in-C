@@ -5,6 +5,7 @@
 #include<pthread.h>
 #include<ncurses.h>
 #include<time.h>
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 int serverSocketFD;
 struct sockaddr_in serverAdress;
 vector session_users = {0,0,NULL,sizeof(struct user)};
@@ -53,6 +54,7 @@ void create_server(){
 
 
 void broadcast(int clientFd,char* msg){
+    pthread_mutex_lock(&lock); 
     char* sender_name =  get_user_name_from_fd(&session_users,clientFd);
     for(int i=0;i<session_users.sz;i++){
         struct user *cur = (struct user*)get(&session_users,i);
@@ -63,9 +65,11 @@ void broadcast(int clientFd,char* msg){
         sprintf(buf,"%s <%s> : %s\n",sender_name,tm,msg);
         send_msg(cur->fd,buf);
     }
+    pthread_mutex_unlock(&lock); 
 }
 
-void broadcast_connected_users(){    
+void broadcast_connected_users(){   
+    pthread_mutex_lock(&lock); 
     char buf[BUFSIZ*2] = {"user \0"};
     for(int i=0;i<session_users.sz;i++){
         struct user *cur = (struct user*)get(&session_users,i);
@@ -80,6 +84,7 @@ void broadcast_connected_users(){
         struct user *cur = (struct user*)get(&session_users,i);
         send_msg(cur->fd,buf);
     }
+    pthread_mutex_unlock(&lock); 
 }
 // LOGIN USERNAME PASSWORD
 // SIGNUP USERNAME PASSWORD
@@ -96,8 +101,8 @@ int log_user(int clientSocketFD){
         return ERR;
     }
     buf[n] = '\0';
-    char tp[16],name[64],pass[64];
-    if(sscanf(buf,"%15s %63s %63s",tp,name,pass) != 3){
+    char tp[16],name[16],pass[16];
+    if(sscanf(buf,"%15s %15s %15s",tp,name,pass) != 3){
         close_connection(clientSocketFD,"Wrong format2\n");
         return ERR;
     }
@@ -110,7 +115,9 @@ int log_user(int clientSocketFD){
             close_connection(clientSocketFD,"user name cant be user\n");
             return ERR;
         }
+        pthread_mutex_lock(&lock);
         add_user_session(&session_users,create_user(name,pass,clientSocketFD));
+        pthread_mutex_unlock(&lock);
         return clientSocketFD;
     }
     if(strcmp("signup",tp) == 0){
@@ -127,7 +134,10 @@ int log_user(int clientSocketFD){
             close_connection(clientSocketFD,"user name cant be user\n");
             return ERR;
         }
+        
+        pthread_mutex_lock(&lock);
         add_user_session(&session_users,create_user(name,pass,clientSocketFD));
+        pthread_mutex_unlock(&lock);
 
         return clientSocketFD;
     }
@@ -143,8 +153,12 @@ void* chat(void* clientFd){
     while(1){
         int n = recv_msg(*(int*)clientFd,buf,BUFSIZ-1);
         if(n <= 0){
+            pthread_mutex_lock(&lock);
             remove_user_session(&session_users,*(int*)clientFd);
+            pthread_mutex_unlock(&lock);
+
             broadcast_connected_users();
+            free(clientFd);
             return NULL;
         }
         buf[n] = '\0';
@@ -158,7 +172,6 @@ void process_connection(){
     int clientAdressSize = sizeof(struct sockaddr_in);
     int clientSocketFD = accept(serverSocketFD,(struct sockaddr*)&clientAdress,&clientAdressSize);
     if(clientSocketFD < 0){
-        // fix later
         // err_exit("Error connecting the client socket\n");
         return;
     }
@@ -194,15 +207,16 @@ void exit_program(){
     free_vector(&all_fd);
 }
 void* tst(void*){
+    printf("Enter q to quit or w to show connected users\n");
     while (1)
     {   
-        printf("Enter q to quit or any character to show connected users\n");
         int c = getchar();
         if(c == 'q'){
+            shutdown(serverSocketFD,SHUT_RDWR);
             running = 0;
             return NULL;
         }
-        if(c){
+        if(c == 'w'){
             printf("Printing connected users\n");
             show_connected_users();
         }
@@ -210,7 +224,7 @@ void* tst(void*){
     }
     return NULL;
 }
-void* run_server(){
+void* run_server_thread(){
     create_server();
     pthread_t thread;
     push_back(&threads,&thread);
@@ -221,16 +235,16 @@ void* run_server(){
     }
     return NULL;    
 }
-int main(){
+void run_server(){
     pthread_t serv_thread;
-    pthread_create(&serv_thread,NULL,run_server,NULL);
-    while (running)
-    {
-        // printf("%d",running);
-        sleep(1);
-    }
-    shutdown(serverSocketFD,SHUT_RDWR);
+    pthread_create(&serv_thread,NULL,run_server_thread,NULL);
     pthread_join(serv_thread,NULL);
+
+}
+
+int main(){
+    get_port();
+    run_server();
     exit_program();
     return 0;
 }
