@@ -5,7 +5,6 @@
 typedef struct vector{
     int sz;
     int cap;
-    // becuase thats just a byte
     unsigned char* arr;
     size_t word_sz;
 

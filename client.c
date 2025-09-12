@@ -6,7 +6,7 @@ void get_ip(char buf[]){
     struct in_addr tmp;
     printf("Enter ip adress or local for local ip : ");
     if(scanf("%s",buf) != 1){
-        err_exit("invalid ip adress\n");
+        err_exit("Invalid ip adress\n");
     }
     if(strcmp(buf,"local") == 0){
         strcpy(buf,"127.0.0.1");
@@ -111,7 +111,7 @@ void *incoming_msg(void *arg) {
 }
 int connect_server(){
     socketFD = socket(AF_INET, SOCK_STREAM, 0);
-    if (socketFD == -1) err_exit_wn("Couldnt connect socket");
+    if (socketFD == -1) err_exit_wn("Couldn't connect socket");
 
     struct sockaddr_in address;
     address.sin_family = AF_INET;
@@ -123,13 +123,13 @@ int connect_server(){
     if(res == 0){
         printf("Connection successful\n");
     }else{
-        err_exit_wn("Couldnt establish connection\n");
+        err_exit_wn("Couldn't establish connection\n");
     }
 
     pthread_t thread;
     
     if (pthread_create(&thread, NULL, incoming_msg, NULL) != 0) {
-        err_exit_wn("Couldnt create thread");
+        err_exit_wn("Couldn't create thread");
     }
     pthread_detach(thread);
 

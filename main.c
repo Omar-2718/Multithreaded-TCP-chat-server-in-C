@@ -40,7 +40,7 @@ void create_server(){
     // queue connections up to 10
     int lisRes = listen(serverSocketFD,BACKLOG);
     if(lisRes == 0){
-        printf("listen was successful\n");
+        printf("Listen was successful\n");
     }
     else{
         err_exit("Error couldnt listen\n");
@@ -110,7 +110,7 @@ int log_user(int clientSocketFD){
             return ERR;
         }
         if(strcmp(name,"user") == 0){
-            close_connection(clientSocketFD,"user name cant be user\n");
+            close_connection(clientSocketFD,"User name can't be user\n");
             return ERR;
         }
         pthread_mutex_lock(&lock);
@@ -129,7 +129,7 @@ int log_user(int clientSocketFD){
 
         }
         if(strcmp(name,"user") == 0){
-            close_connection(clientSocketFD,"user name cant be user\n");
+            close_connection(clientSocketFD,"User name can't be user\n");
             return ERR;
         }
         

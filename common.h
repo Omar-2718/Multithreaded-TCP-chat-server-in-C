@@ -56,11 +56,11 @@ int send_msg(int fd,char* msg){
     uint32_t len = strlen(msg);
     uint32_t nt_len = htonl(len);
     if(send_entire_len(fd,&nt_len,sizeof(nt_len)) != sizeof(nt_len)){
-        printf("Couldnt send to %d FD (most likely the client disconnected)\n",fd);
+        printf("Couldn't send to %d FD (most likely the client disconnected)\n",fd);
         return -1;
     }
     if(send_entire_len(fd,msg,len) != len){
-        printf("Couldnt send to %d FD (most likely the client disconnected)\n",fd);
+        printf("Couldn't send to %d FD (most likely the client disconnected)\n",fd);
         return -1;
     }
     return len;
