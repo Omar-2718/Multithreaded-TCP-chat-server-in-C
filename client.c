@@ -44,7 +44,28 @@ void exit_program(char* msg){
     exit(EXIT_SUCCESS);
 }
 void write_main_chat(char buf[]){
-    char *line = strtok(buf,"\n");
+    char* name = strtok(buf,"<");
+    int cur_i,cur_j;
+    getyx(main_chat,cur_i,cur_j);
+    if(cur_i >= getmaxy(main_chat)){
+        wscrl(main_chat,1);
+    }
+    wattron(main_chat,COLOR_PAIR(3));
+    wprintw(main_chat,"%s", name);
+    wattroff(main_chat,COLOR_PAIR(3));
+    wrefresh(main_chat);
+
+    char* time = strtok(NULL,">");
+    getyx(main_chat,cur_i,cur_j);
+    if(cur_i >= getmaxy(main_chat)){
+        wscrl(main_chat,1);
+    }
+    wattron(main_chat,COLOR_PAIR(4));
+    wprintw(main_chat,"<%s>", time);
+    wattroff(main_chat,COLOR_PAIR(4));
+    wrefresh(main_chat);
+
+    char *line = strtok(NULL,"\n");
     while (line)
     {   
         int cur_i,cur_j;
@@ -153,10 +174,15 @@ void chat_screen(){
     wrefresh(user_chat_border);
 
     scrollok(main_chat, TRUE);
-
+    // users
     init_pair(1,COLOR_GREEN,COLOR_BLACK);
+    // instructions
     init_pair(2,COLOR_RED,COLOR_BLACK);
-
+    // name
+    init_pair(3,COLOR_YELLOW,COLOR_BLACK);
+    // time
+    init_pair(4,COLOR_CYAN,COLOR_BLACK);
+    
     wattron(users,COLOR_PAIR(1));
     wprintw(users,"Active users window\n");
     wattroff(users,COLOR_PAIR(1));
