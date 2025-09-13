@@ -1,7 +1,7 @@
 # Multithreaded TCP chat server in C with ncurses-based terminal GUI
 
 A real-time TCP group chat server and client built entirely in C, using pthreads, sockets, and an ncurses GUI.
-This project demonstrates how to handle multiple clients concurrently with threads while being thread safe with mutex and correct handling, it lets you create a group chat or join one on a specific ip and port
+This project demonstrates how to handle multiple clients concurrently with threads while being thread safe with mutex and correct handling, it lets you create a group chat or join one on a specific IP and port
 
 ## Features
 
@@ -32,12 +32,12 @@ This project demonstrates how to handle multiple clients concurrently with threa
    gcc client.c common.c session.c vector.c  -o client -lpthread -lncurses
    ```
 
-4. Run the server:
+5. Run the server:
    ```bash
    ./server
    ```
 
-4. Run and connect via the client:
+6. Run and connect via the client:
    ```bash
     ./client
    ```
